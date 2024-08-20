@@ -1,5 +1,6 @@
 # "org" ensures this Service is used with the correct Serverless Framework Access Key.
 org: juangonzalez
+
 # "service" is the name of this project. This will also be added to your AWS resource names.
 service: api-users
 
@@ -24,8 +25,15 @@ provider:
             - dynamodb:DeleteItem
           Resource:
             - Fn::GetAtt: [UsersTable, Arn]
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - Ref: EmailSNSTopic
   environment:
     USERS_TABLE: ${param:tableName}
+    SNS_TOPIC_ARN:
+      Ref: EmailSNSTopic
 
 functions:
   getUsers:
@@ -63,6 +71,13 @@ functions:
           path: /users/{id}
           method: put
 
+  sendEmail:
+    handler: src/lambdas/sendEmail.handler
+    events:
+      - httpApi:
+          path: /send-email
+          method: post
+
 resources:
   Resources:
     UsersTable:
@@ -76,3 +91,8 @@ resources:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+
+    EmailSNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: email-sns-topic-${sls:stage}
