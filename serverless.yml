@@ -1,0 +1,78 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: juangonzalez
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: api-users
+
+stages:
+  default:
+    params:
+      tableName: 'users-table-${sls:stage}'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [UsersTable, Arn]
+  environment:
+    USERS_TABLE: ${param:tableName}
+
+functions:
+  getUsers:
+    handler: src/lambdas/getUsers.handler
+    events:
+      - httpApi:
+          path: /users
+          method: get
+
+  getUser:
+    handler: src/lambdas/getUser.handler
+    events:
+      - httpApi:
+          path: /users/{id}
+          method: get
+
+  createUser:
+    handler: src/lambdas/createUser.handler
+    events:
+      - httpApi:
+          path: /users
+          method: post
+
+  deleteUser:
+    handler: src/lambdas/deleteUser.handler
+    events:
+      - httpApi:
+          path: /users/{id}
+          method: delete
+
+  updateUser:
+    handler: src/lambdas/updateUser.handler
+    events:
+      - httpApi:
+          path: /users/{id}
+          method: put
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${param:tableName}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

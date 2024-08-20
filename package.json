@@ -1,0 +1,14 @@
+{
+  "name": "api-users",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "invoke": "serverless invoke local -f",
+    "deploy": "serverless deploy --verbose"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.632.0",
+    "@aws-sdk/lib-dynamodb": "^3.632.0"
+  }
+}
