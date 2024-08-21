@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import docClient from '../database/config.js';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
+import { getParameter } from '../utils/ssm-client.js';
+import { ENV } from '../constants/environments.js';
 
 export default async function createUser({ name, dni }) {
   try {
@@ -9,9 +11,12 @@ export default async function createUser({ name, dni }) {
       name,
       dni,
     };
+
+    const tableName = await getParameter(ENV.USERS_TABLE);
+
     await docClient.send(
       new PutCommand({
-        TableName: process.env.USERS_TABLE,
+        TableName: tableName,
         Item: newUser,
       })
     );

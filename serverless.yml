@@ -4,14 +4,14 @@ org: juangonzalez
 # "service" is the name of this project. This will also be added to your AWS resource names.
 service: api-users
 
-stages:
-  default:
-    params:
-      tableName: 'users-table-${sls:stage}'
+useDotenv: true
 
 provider:
   name: aws
   runtime: nodejs20.x
+  environment:
+    users_table_arn: /pragma/users_table_arn
+    sns_topic_arn: /pragma/email_topic_arn
   iam:
     role:
       statements:
@@ -23,19 +23,35 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [UsersTable, Arn]
+          Resource: ${env:USERS_TABLE_ARN}
         - Effect: Allow
           Action:
             - sns:Publish
-          Resource:
-            - Ref: EmailSNSTopic
-  environment:
-    USERS_TABLE: ${param:tableName}
-    SNS_TOPIC_ARN:
-      Ref: EmailSNSTopic
+          Resource: ${env:SNS_TOPIC_ARN}
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+          Resource: ${env:SSM_ARN}
+
+  httpApi:
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: ${env:COGNITO_ISSUER_URL}
+        audience:
+          - ${env:COGNITO_AUDIENCE}
 
 functions:
+  hello:
+    handler: src/lambdas/hello.handler
+    events:
+      - httpApi:
+          path: /
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
   getUsers:
     handler: src/lambdas/getUsers.handler
     events:
@@ -77,22 +93,3 @@ functions:
       - httpApi:
           path: /send-email
           method: post
-
-resources:
-  Resources:
-    UsersTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${param:tableName}
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
-
-    EmailSNSTopic:
-      Type: AWS::SNS::Topic
-      Properties:
-        TopicName: email-sns-topic-${sls:stage}
